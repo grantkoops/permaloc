@@ -1,0 +1,14 @@
+[
+  {"id": "cleanline", "name": "CleanLine", "piece_length_ft": [8, 16], "stakes_per_piece": {"8": 3, "16": 5}, "stake_length_in": 12, "heights_in": [3, 4, 5.5], "source_url": "https://permaloc.com/edging/cleanline/"},
+  {"id": "cleanline-xl", "name": "CleanLine XL", "piece_length_ft": [8, 16], "stakes_per_piece": {"8": 3}, "stake_length_in": 18, "heights_in": [5, 6, 8, 12], "source_url": "https://permaloc.com/downloads/specs/xl10part.pdf"},
+  {"id": "proline", "name": "ProLine", "piece_length_ft": [8, 16], "stakes_per_piece": {"8": 3, "16": 5}, "stake_length_in": 12, "heights_in": [4], "source_url": "https://permaloc.com/edging/proline/"},
+  {"id": "proslide", "name": "ProSlide", "piece_length_ft": [8, 16], "stakes_per_piece": {"8": 3, "16": 5}, "stake_length_in": 12, "heights_in": [3, 4, 5.5], "source_url": "https://permaloc.com/edging/proslide/"},
+  {"id": "proslide-lt", "name": "ProSlide LT", "piece_length_ft": [8, 16], "stakes_per_piece": {"8": 3, "16": 5}, "stake_length_in": 12, "heights_in": [4], "source_url": "https://permaloc.com/edging/proslide-lt/"},
+  {"id": "permastrip", "name": "PermaStrip", "piece_length_ft": [8, 16], "stakes_per_piece": {"8": 3, "16": 8}, "stake_length_in": 12, "heights_in": [3.5, 4, 6], "source_url": "https://permaloc.com/downloads/specs/ps10part.pdf", "note": "Generic FAQ says 5 stakes per 16 ft piece; the PermaStrip spec sheet says 8."},
+  {"id": "structuredge", "name": "StructurEdge", "piece_length_ft": [8], "heights_in": [1.125, 1.625, 2.25], "source_url": "https://permaloc.com/edging/structuredge/", "note": "Anchored with 3/8 x 10 in spiral steel spikes; base holes 4 in apart; required on-center spacing not published."},
+  {"id": "brickblock", "name": "BrickBlock", "piece_length_ft": [8], "stake_spacing_in": 12, "heights_in": [0.625, 1.75, 2.75], "source_url": "https://permaloc.com/edging/brickblock/", "note": "Spike spacing from the CAD detail bb0.pdf: 12 in o.c. typical, 4 in o.c. alternative."},
+  {"id": "asphaltedge", "name": "AsphaltEdge", "piece_length_ft": [8], "heights_in": [1, 1.5], "source_url": "https://permaloc.com/edging/asphaltedge/", "note": "Short spec: spikes 4 to 12 in on center over aggregate base. CAD and tech specs list taller sizes too."},
+  {"id": "athletedge", "name": "AthletEdge", "piece_length_ft": [8], "heights_in": [2, 2.5, 3, 4, 5, 6], "source_url": "https://permaloc.com/edging/athletedge/"},
+  {"id": "geoedge", "name": "GeoEdge", "piece_length_ft": [8], "heights_in": [3, 3.5, 4, 4.25, 4.5, 4.75, 5.5, 6.5, 7.5, 8.5], "source_url": "https://permaloc.com/downloads/specs/ge10part.pdf"},
+  {"id": "resinstop", "name": "ResinStop", "piece_length_ft": [7.5], "source_url": "https://permaloc.com/edging/resinstop/"}
+]
