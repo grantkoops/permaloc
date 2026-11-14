@@ -1,5 +1,5 @@
 /* Permaloc chat bubble. Usage:
- * <script src="https://permaloc-chatbot.vercel.app/widget.js" defer></script>
+ * <script src="https://permaloc-assistant.vercel.app/widget.js" defer></script>
  * Optional: data-color, data-position="left", data-teaser="..."
  */
 (function () {
