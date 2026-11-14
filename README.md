@@ -36,7 +36,7 @@ On Vercel, set the same variables under Project → Settings → Environment Var
 Add this before `</body>`, either site-wide or in the footer template or tag manager:
 
 ```html
-<script src="https://permaloc-assistant.vercel.app/widget.js" data-teaser="Questions about edging? Ask me!" defer></script>
+<script src="https://permaloc.vercel.app/widget.js" data-teaser="Questions about edging? Ask me!" defer></script>
 ```
 
 Optional attributes: `data-color` (bubble color), `data-position="left"`, `data-teaser`.

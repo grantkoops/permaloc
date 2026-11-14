@@ -21,7 +21,7 @@ export default function Home() {
         <h2>Install on the website</h2>
         <p>Paste this one line before <code>&lt;/body&gt;</code> on every page (or add it once in the site&rsquo;s footer or tag manager):</p>
         <pre>
-          <code>{`<script src="https://permaloc-assistant.vercel.app/widget.js" defer></script>`}</code>
+          <code>{`<script src="https://permaloc.vercel.app/widget.js" defer></script>`}</code>
         </pre>
         <p>Optional attributes:</p>
         <ul>
