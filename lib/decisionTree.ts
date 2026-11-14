@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { buildDiagramSpec, parseProduct } from "./diagram";
 
 // Permaloc's product decision tree, generated from knowledge/source/decision-tree.xlsx
 // by scripts/build_decision_tree.py.
@@ -69,6 +70,7 @@ export function walkDecisionTree(answers: string[]) {
         recommendation: r.recommendation,
         product_url: r.url,
         product_description: r.reason_id != null ? data.reasons[r.reason_id] : undefined,
+        diagram: buildDiagramSpec(path, r.recommendation) ?? undefined,
         ...(i < answers.length ? { note: `Ignored extra answers: ${answers.slice(i).join(", ")}` } : {}),
       };
     }
@@ -95,4 +97,27 @@ export function walkDecisionTree(answers: string[]) {
     node = node.options![chosen];
   }
   return { status: "error" };
+}
+
+/** First tree path (optionally within one application) whose recommended product is `family`. */
+export function findExamplePath(family: string, application?: string, height?: number) {
+  const data = load();
+  if (!data) return null;
+  const fam = family.toLowerCase();
+  let best: { answers: string[]; score: number } | null = null;
+  const visit = (node: TreeNode, answers: string[]) => {
+    if (node.result) {
+      const first = node.result.recommendation.split("\n").map((l) => l.trim()).find((l) => l && !/^recommend(ed)?:?$/i.test(l)) ?? "";
+      const lower = first.toLowerCase();
+      // "CleanLine" must not match "CleanLine XL"
+      if (!lower.includes(fam) || (fam === "cleanline" && lower.includes("cleanline xl"))) return;
+      if (application && answers[0]?.toLowerCase() !== application.toLowerCase()) return;
+      const score = height ? -Math.abs((parseProduct(node.result.recommendation)?.height ?? 0) - height) : 0;
+      if (!best || score > best.score) best = { answers, score };
+      return;
+    }
+    for (const [ans, child] of Object.entries(node.options ?? {})) visit(child, [...answers, ans]);
+  };
+  visit(data.tree, []);
+  return best ? (best as { answers: string[] }).answers : null;
 }

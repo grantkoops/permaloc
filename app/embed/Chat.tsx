@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { DiagramSpec } from "@/lib/diagramTypes";
+import CrossSection from "./CrossSection";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; diagram?: DiagramSpec };
+
+const CAD_URL = "https://permaloc.com/cad-by-application/";
 
 const GREETING =
   "Hi! I'm the Permaloc assistant. I can help with product specs, installation, estimating how much edging you need, or finding where to buy. What are you working on?";
@@ -23,6 +27,7 @@ export default function Chat({ embedded }: { embedded: boolean }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [zoomed, setZoomed] = useState<DiagramSpec | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -44,6 +49,7 @@ export default function Chat({ embedded }: { embedded: boolean }) {
     const content = text.trim();
     if (!content || busy) return;
     const history: Msg[] = [...messages, { role: "user", content }];
+    const apiHistory = history.map(({ role, content }) => ({ role, content }));
     setMessages([...history, { role: "assistant", content: "" }]);
     setInput("");
     setQuickReplies([]);
@@ -55,14 +61,15 @@ export default function Chat({ embedded }: { embedded: boolean }) {
     let reply = "";
     let needBreak = false;
     let options: string[] = [];
+    let diagram: DiagramSpec | undefined;
     const update = () =>
-      setMessages((m) => [...m.slice(0, -1), { role: "assistant", content: reply }]);
+      setMessages((m) => [...m.slice(0, -1), { role: "assistant", content: reply, diagram }]);
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: apiHistory }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -92,6 +99,9 @@ export default function Chat({ embedded }: { embedded: boolean }) {
             } else {
               needBreak = true; // empty text event = a tool round ended
             }
+          } else if (ev.type === "diagram") {
+            diagram = ev.spec;
+            update();
           } else if (ev.type === "options") {
             options = Array.isArray(ev.options) ? ev.options : [];
           } else if (ev.type === "status") {
@@ -155,7 +165,12 @@ export default function Chat({ embedded }: { embedded: boolean }) {
           </div>
         )}
         {messages.map((m, i) =>
-          m.content || m.role === "user" ? <Bubble key={i} role={m.role} content={m.content} /> : null,
+          m.content || m.role === "user" || m.diagram ? (
+            <div key={i} className={`turn ${m.role}`}>
+              {(m.content || m.role === "user") && <Bubble role={m.role} content={m.content} />}
+              {m.diagram && <DiagramCard spec={m.diagram} onOpen={() => setZoomed(m.diagram!)} />}
+            </div>
+          ) : null,
         )}
         {!busy && quickReplies.length > 0 && (
           <div className="suggestions quick-replies">
@@ -190,7 +205,59 @@ export default function Chat({ embedded }: { embedded: boolean }) {
         />
         <button type="submit" disabled={busy || !input.trim()} aria-label="Send">➤</button>
       </form>
+      {zoomed && <DiagramOverlay spec={zoomed} onClose={() => setZoomed(null)} />}
       <div className="footnote">AI assistant · answers may be imperfect, so confirm specs with Permaloc</div>
+    </div>
+  );
+}
+
+function DiagramCard({ spec, onOpen }: { spec: DiagramSpec; onOpen: () => void }) {
+  return (
+    <div className="diagram-card">
+      <button className="diagram-open" onClick={onOpen} aria-label={`Enlarge cross-section of ${spec.title}`}>
+        <CrossSection spec={spec} />
+        <span className="diagram-hint">Tap to enlarge</span>
+      </button>
+      <p className="diagram-caption">
+        Illustrative cross-section, not for construction. Confirm details with{" "}
+        <a href={CAD_URL} target="_blank" rel="noopener">Permaloc&rsquo;s CAD drawings</a>.
+      </p>
+    </div>
+  );
+}
+
+function DiagramOverlay({ spec, onClose }: { spec: DiagramSpec; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  function save() {
+    const svg = ref.current?.querySelector("svg");
+    if (!svg) return;
+    const blob = new Blob([`<?xml version="1.0" encoding="UTF-8"?>\n${svg.outerHTML}`], { type: "image/svg+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `permaloc-${spec.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.svg`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  return (
+    <div className="diagram-overlay" role="dialog" aria-modal="true" aria-label={spec.title} onClick={onClose}>
+      <div className="diagram-sheet" ref={ref} onClick={(e) => e.stopPropagation()}>
+        <div className="diagram-actions">
+          <button onClick={save}>Save image</button>
+          <button onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <CrossSection spec={spec} />
+        <p className="diagram-caption">
+          Illustrative cross-section, not for construction. Confirm details with{" "}
+          <a href={CAD_URL} target="_blank" rel="noopener">Permaloc&rsquo;s CAD drawings</a>.
+        </p>
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ An AI assistant for permaloc.com, built on Claude (Anthropic API) with Next.js a
 | Capability | How |
 |---|---|
 | Product recommendations | The `recommend_product` tool walks Permaloc's decision tree (`knowledge/decision-tree.json`, built from `knowledge/source/decision-tree.xlsx`) one question at a time. The chat shows each question's options as buttons. Configurations the tree sends to a specialist become a lead. |
+| Installation diagrams | Every recommendation shows a to-scale, labeled cross-section built from the visitor's answers (`lib/diagram.ts` → `app/embed/CrossSection.tsx`). It can be enlarged and saved as SVG. `show_installation_diagram` draws a typical install on request. Drawing conventions follow Permaloc's CAD details at permaloc.com/cad-by-application. |
 | Product Q&A | Answers from `knowledge/permaloc.md`, which is loaded into the system prompt and prompt-cached. It can also read live permaloc.com pages (web fetch is limited to that domain). |
 | Installation help | Uses the install steps and FAQ in the knowledge base, with links to the relevant pages. |
 | Quantity estimates | The `calculate_materials` tool does exact arithmetic for pieces and stakes from `knowledge/materials.json`. |
@@ -44,6 +45,8 @@ Optional attributes: `data-color` (bubble color), `data-position="left"`, `data-
 For production, set `ALLOWED_FRAME_ANCESTORS="https://www.permaloc.com https://permaloc.com"` so other sites can't embed the chat.
 
 ## Keeping the knowledge current
+
+- **Diagrams:** after changing the decision tree, run `npx tsx scripts/check_diagrams.ts` to confirm every path still produces a drawing. To review drawings, run the app with `DIAGRAM_PREVIEW=1` and open `/embed/diagrams-preview`. That page returns a 404 otherwise.
 
 - **Decision tree:** edit `knowledge/source/decision-tree.xlsx` (same columns: Question/Answer pairs, FinalAnswer, RecommendedProductURL, RecommendationReason), then run `python3 scripts/build_decision_tree.py` (needs `pip install openpyxl`) and commit both files. The bot's recommendations come only from this tree.
 

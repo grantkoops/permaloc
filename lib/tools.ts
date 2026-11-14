@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { loadKnowledge } from "./knowledge";
-import { applicationTypes, walkDecisionTree } from "./decisionTree";
+import { applicationTypes, findExamplePath, walkDecisionTree } from "./decisionTree";
+import type { DiagramSpec } from "./diagramTypes";
 
 type BetaTool = Anthropic.Beta.BetaToolUnion;
 
@@ -99,6 +100,26 @@ export function buildTools(): BetaTool[] {
         additionalProperties: false,
       },
     },
+    {
+      name: "show_installation_diagram",
+      description:
+        "Show the visitor an illustrative cross-section of how a Permaloc product installs (layers, edging, stakes or spikes). " +
+        "recommend_product already shows one with every recommendation, so use this only when someone asks to see how a product installs " +
+        "outside a recommendation, e.g. 'show me how StructurEdge goes in on concrete'.",
+      input_schema: {
+        type: "object",
+        properties: {
+          product: {
+            type: "string",
+            enum: ["CleanLine", "CleanLine XL", "ProLine", "PermaStrip", "StructurEdge", "BrickBlock", "AsphaltEdge", "AthletEdge", "GeoEdge"],
+          },
+          application: { type: "string", description: `Optional. One of: ${applicationTypes().join(", ")}.` },
+          height_in: { type: "number", description: "Optional product height in inches, to pick the closest size." },
+        },
+        required: ["product"],
+        additionalProperties: false,
+      },
+    },
     // Lets the bot read a live permaloc.com page when the knowledge base doesn't cover a detail.
     {
       type: "web_fetch_20260209",
@@ -112,6 +133,22 @@ export function buildTools(): BetaTool[] {
 // ---------- Tool implementations ----------
 
 const RecommendInput = z.object({ answers: z.array(z.string().max(200)).max(10) });
+const DiagramInput = z.object({ product: z.string().max(40), application: z.string().max(40).optional(), height_in: z.number().positive().max(20).optional() });
+
+function showDiagram(raw: unknown) {
+  const input = DiagramInput.parse(raw);
+  const answers = findExamplePath(input.product, input.application, input.height_in) ?? findExamplePath(input.product, undefined, input.height_in);
+  if (!answers) return { error: `No example install for ${input.product}${input.application ? ` in ${input.application}` : ""}.` };
+  const r = walkDecisionTree(answers) as { status: string; diagram?: DiagramSpec; recommendation?: string };
+  if (!r.diagram) return { error: "Couldn't draw that one." };
+  return {
+    status: "shown",
+    example: answers.join(" > "),
+    shown_product: r.diagram.title,
+    note: input.application && answers[0] !== input.application ? `${input.product} isn't recommended for ${input.application} in Permaloc's guide; showed a typical install instead.` : undefined,
+    diagram: r.diagram,
+  };
+}
 
 const CalcInput = z.object({
   product_id: z.string(),
@@ -253,16 +290,24 @@ function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-export async function runTool(name: string, input: unknown): Promise<{ content: string; isError: boolean }> {
+export async function runTool(name: string, input: unknown): Promise<{ content: string; isError: boolean; diagram?: DiagramSpec }> {
   try {
     let result: unknown;
     if (name === "recommend_product") result = walkDecisionTree(RecommendInput.parse(input).answers);
+    else if (name === "show_installation_diagram") result = showDiagram(input);
     else if (name === "calculate_materials") result = calculateMaterials(input);
     else if (name === "find_sales_contact") result = findSalesContact(input);
     else if (name === "submit_lead") result = await submitLead(input);
     else return { content: `Unknown tool ${name}`, isError: true };
     const isError = typeof result === "object" && result !== null && "error" in result;
-    return { content: JSON.stringify(result), isError };
+    // The drawing goes to the chat window; the model only learns that it was shown.
+    let diagram: DiagramSpec | undefined;
+    if (result && typeof result === "object" && "diagram" in result && (result as { diagram?: DiagramSpec }).diagram) {
+      const { diagram: d, ...rest } = result as { diagram: DiagramSpec };
+      diagram = d;
+      result = { ...rest, diagram_shown: `A cross-section of ${d.title} (${d.subtitle}) is shown to the visitor below your reply.` };
+    }
+    return { content: JSON.stringify(result), isError, diagram };
   } catch (e) {
     if (e instanceof z.ZodError) {
       return { content: `Invalid input: ${e.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`, isError: true };

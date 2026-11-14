@@ -98,6 +98,7 @@ export async function POST(req: Request) {
             send({ type: "status", text: statusFor(t.name) });
             const r = await runTool(t.name, t.input);
             if (t.name === "submit_lead" && !r.isError) send({ type: "lead_submitted" });
+            if (r.diagram) send({ type: "diagram", spec: r.diagram });
             if (t.name === "recommend_product" && !r.isError) {
               // Let the chat window show the decision tree's options as quick-reply buttons.
               const parsed = JSON.parse(r.content) as { status?: string; options?: string[] };
@@ -135,6 +136,7 @@ export async function POST(req: Request) {
 
 function statusFor(tool: string) {
   if (tool === "recommend_product") return "Checking the product guide…";
+  if (tool === "show_installation_diagram") return "Drawing the cross-section…";
   if (tool === "calculate_materials") return "Calculating materials…";
   if (tool === "find_sales_contact") return "Looking up your sales contact…";
   if (tool === "submit_lead") return "Sending your details to the sales team…";
