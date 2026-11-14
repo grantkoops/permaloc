@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { loadKnowledge } from "./knowledge";
+import { applicationTypes, walkDecisionTree } from "./decisionTree";
 
 type BetaTool = Anthropic.Beta.BetaToolUnion;
 
@@ -11,6 +12,28 @@ export function buildTools(): BetaTool[] {
   const productIds = materials.map((m) => m.id);
 
   return [
+    {
+      name: "recommend_product",
+      description:
+        "Permaloc's official product decision tree. Use it for every product recommendation (which edging/restraint and size to use). " +
+        "Pass the visitor's answers so far, in order. It returns either the next question with its valid options " +
+        "(status need_answer), or the final recommendation (status recommendation), or transfer_to_specialist. " +
+        "Start with answers: [] or with the application type if you already know it. " +
+        `Application types: ${applicationTypes().join(", ")}. ` +
+        "You may pass several answers at once when the visitor already gave them. Use the option wording returned by the tool.",
+      input_schema: {
+        type: "object",
+        properties: {
+          answers: {
+            type: "array",
+            items: { type: "string" },
+            description: "Answers in question order, starting with the application type. Empty to get the first question.",
+          },
+        },
+        required: ["answers"],
+        additionalProperties: false,
+      },
+    },
     {
       name: "calculate_materials",
       description:
@@ -87,6 +110,8 @@ export function buildTools(): BetaTool[] {
 }
 
 // ---------- Tool implementations ----------
+
+const RecommendInput = z.object({ answers: z.array(z.string().max(200)).max(10) });
 
 const CalcInput = z.object({
   product_id: z.string(),
@@ -231,7 +256,8 @@ function escapeHtml(s: string) {
 export async function runTool(name: string, input: unknown): Promise<{ content: string; isError: boolean }> {
   try {
     let result: unknown;
-    if (name === "calculate_materials") result = calculateMaterials(input);
+    if (name === "recommend_product") result = walkDecisionTree(RecommendInput.parse(input).answers);
+    else if (name === "calculate_materials") result = calculateMaterials(input);
     else if (name === "find_sales_contact") result = findSalesContact(input);
     else if (name === "submit_lead") result = await submitLead(input);
     else return { content: `Unknown tool ${name}`, isError: true };

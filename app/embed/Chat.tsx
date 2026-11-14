@@ -8,6 +8,7 @@ const GREETING =
   "Hi! I'm the Permaloc assistant. I can help with product specs, installation, estimating how much edging you need, or finding where to buy. What are you working on?";
 
 const SUGGESTIONS = [
+  "Help me choose the right edging",
   "Which edging is best for paver patios?",
   "How much edging do I need for 240 ft?",
   "Where can I buy Permaloc in Ohio?",
@@ -21,6 +22,7 @@ export default function Chat({ embedded }: { embedded: boolean }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -44,6 +46,7 @@ export default function Chat({ embedded }: { embedded: boolean }) {
     const history: Msg[] = [...messages, { role: "user", content }];
     setMessages([...history, { role: "assistant", content: "" }]);
     setInput("");
+    setQuickReplies([]);
     setBusy(true);
     setStatus("Thinking…");
 
@@ -51,6 +54,7 @@ export default function Chat({ embedded }: { embedded: boolean }) {
     abortRef.current = ctrl;
     let reply = "";
     let needBreak = false;
+    let options: string[] = [];
     const update = () =>
       setMessages((m) => [...m.slice(0, -1), { role: "assistant", content: reply }]);
 
@@ -88,6 +92,8 @@ export default function Chat({ embedded }: { embedded: boolean }) {
             } else {
               needBreak = true; // empty text event = a tool round ended
             }
+          } else if (ev.type === "options") {
+            options = Array.isArray(ev.options) ? ev.options : [];
           } else if (ev.type === "status") {
             setStatus(ev.text);
           } else if (ev.type === "error") {
@@ -102,6 +108,7 @@ export default function Chat({ embedded }: { embedded: boolean }) {
       }
     } finally {
       update();
+      setQuickReplies(options);
       setBusy(false);
       setStatus(null);
       abortRef.current = null;
@@ -111,6 +118,7 @@ export default function Chat({ embedded }: { embedded: boolean }) {
   function reset() {
     abortRef.current?.abort();
     setMessages([]);
+    setQuickReplies([]);
   }
 
   function close() {
@@ -148,6 +156,13 @@ export default function Chat({ embedded }: { embedded: boolean }) {
         )}
         {messages.map((m, i) =>
           m.content || m.role === "user" ? <Bubble key={i} role={m.role} content={m.content} /> : null,
+        )}
+        {!busy && quickReplies.length > 0 && (
+          <div className="suggestions quick-replies">
+            {quickReplies.map((o) => (
+              <button key={o} onClick={() => send(o)}>{o}</button>
+            ))}
+          </div>
         )}
         {status && <div className="status"><span className="dots"><i /><i /><i /></span>{status}</div>}
       </div>

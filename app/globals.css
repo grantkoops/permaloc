@@ -58,3 +58,5 @@ body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; 
 .demo-card { margin-top: 32px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
 .demo-card h2 { margin-top: 0; font-size: 20px; }
 .demo pre { background: #10170f; color: #d9f2dc; padding: 14px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+.quick-replies { margin-left: 2px; }
+.quick-replies button { font-size: 12.5px; padding: 5px 11px; }

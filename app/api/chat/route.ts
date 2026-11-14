@@ -98,6 +98,12 @@ export async function POST(req: Request) {
             send({ type: "status", text: statusFor(t.name) });
             const r = await runTool(t.name, t.input);
             if (t.name === "submit_lead" && !r.isError) send({ type: "lead_submitted" });
+            if (t.name === "recommend_product" && !r.isError) {
+              // Let the chat window show the decision tree's options as quick-reply buttons.
+              const parsed = JSON.parse(r.content) as { status?: string; options?: string[] };
+              const opts = parsed.status === "need_answer" || parsed.status === "invalid_answer" ? parsed.options : undefined;
+              send({ type: "options", options: opts && opts.length <= 40 ? opts : [] });
+            }
             results.push({ type: "tool_result", tool_use_id: t.id, content: r.content, is_error: r.isError || undefined });
           }
           messages.push({ role: "user", content: results });
@@ -128,6 +134,7 @@ export async function POST(req: Request) {
 }
 
 function statusFor(tool: string) {
+  if (tool === "recommend_product") return "Checking the product guide…";
   if (tool === "calculate_materials") return "Calculating materials…";
   if (tool === "find_sales_contact") return "Looking up your sales contact…";
   if (tool === "submit_lead") return "Sending your details to the sales team…";
