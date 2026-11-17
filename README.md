@@ -12,6 +12,7 @@ An AI assistant for permaloc.com, built on Claude (Anthropic API) with Next.js a
 | Installation help | Uses the install steps and FAQ in the knowledge base, with links to the relevant pages. |
 | Quantity estimates | The `calculate_materials` tool does exact arithmetic for pieces and stakes from `knowledge/materials.json`. |
 | Where to buy / rep lookup | The `find_sales_contact` tool looks up `knowledge/reps.json` by state. If there's no match, it falls back to the dealer locator and the 1-800 number. |
+| Usage reports | Each conversation is saved to Postgres (`lib/analytics.ts`) with location, products, outcome and an AI summary. A separate, password-protected dashboard in `dashboard/` reports on it. |
 | Lead capture | The bot collects contact and project details in conversation, confirms them, then `submit_lead` sends them to email (Resend) and/or a webhook (Zapier, HubSpot, etc.). Every lead is also written to the Vercel logs. |
 
 ## Files
@@ -23,6 +24,8 @@ app/page.tsx            Demo/test page with the bubble installed
 public/widget.js        Embeddable bubble script
 lib/prompt.ts           System prompt: tone, rules, what the bot will and won't do
 lib/tools.ts            Tool definitions and implementations
+lib/analytics.ts        Saves each session for the reporting dashboard
+dashboard/              Separate Next.js app: password-protected reports (deploy as its own Vercel project)
 knowledge/              Everything the bot knows. Edit these files to change its answers.
 ```
 
@@ -32,6 +35,10 @@ knowledge/              Everything the bot knows. Edit these files to change its
 2. Run `npm install`, then `npm run dev`, then open http://localhost:3000.
 
 On Vercel, set the same variables under Project → Settings → Environment Variables, then redeploy.
+
+## Reporting dashboard
+
+Set `DATABASE_URL` on this project to a Postgres database (for example Neon from the Vercel Marketplace) and the chatbot starts saving each session. The table is created automatically on the first chat. The reports live in a separate app; setup is in [dashboard/README.md](dashboard/README.md).
 
 ## Installing on permaloc.com
 

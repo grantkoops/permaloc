@@ -20,6 +20,35 @@ const SUGGESTIONS = [
 ];
 
 const STORAGE_KEY = "permaloc-chat-v1";
+const SESSION_KEY = "permaloc-chat-session";
+const VISITOR_KEY = "permaloc-chat-visitor";
+
+function newId() {
+  return (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9-]/g, "");
+}
+
+// Anonymous ids for the reporting dashboard: one per conversation, one per browser.
+function storedId(storage: Storage | undefined, key: string) {
+  try {
+    let id = storage?.getItem(key);
+    if (!id) {
+      id = newId();
+      storage?.setItem(key, id);
+    }
+    return id;
+  } catch {
+    return newId();
+  }
+}
+
+function analyticsMeta() {
+  const pageUrl = new URLSearchParams(location.search).get("ref") || (window.parent === window ? location.href : document.referrer);
+  return {
+    sessionId: storedId(window.sessionStorage, SESSION_KEY),
+    visitorId: storedId(window.localStorage, VISITOR_KEY),
+    pageUrl,
+  };
+}
 
 export default function Chat({ embedded }: { embedded: boolean }) {
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -69,7 +98,7 @@ export default function Chat({ embedded }: { embedded: boolean }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: apiHistory }),
+        body: JSON.stringify({ messages: apiHistory, ...analyticsMeta() }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -127,6 +156,9 @@ export default function Chat({ embedded }: { embedded: boolean }) {
 
   function reset() {
     abortRef.current?.abort();
+    try {
+      sessionStorage.removeItem(SESSION_KEY); // "Start over" begins a new session in the reports
+    } catch {}
     setMessages([]);
     setQuickReplies([]);
   }

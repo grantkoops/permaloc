@@ -53,7 +53,8 @@
 
   function setOpen(open) {
     if (open && !loaded) {
-      frame.src = origin + "/embed";
+      // Tell the chat which page it was opened on (origin + path only) for the reporting dashboard.
+      frame.src = origin + "/embed?ref=" + encodeURIComponent(location.origin + location.pathname);
       loaded = true;
     }
     frame.classList.toggle("open", open);

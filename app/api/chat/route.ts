@@ -1,4 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { after } from "next/server";
+import { newTurnSignals, noteToolCall, recordTurn } from "@/lib/analytics";
 import { buildSystemPrompt } from "@/lib/prompt";
 import { buildTools, runTool } from "@/lib/tools";
 
@@ -44,8 +46,26 @@ export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (rateLimited(ip)) return Response.json({ error: "Too many messages. Please wait a minute." }, { status: 429 });
 
-  const messages = sanitize(await req.json().catch(() => null));
+  const body = await req.json().catch(() => null);
+  const messages = sanitize(body);
   if (!messages) return Response.json({ error: "Invalid request" }, { status: 400 });
+
+  // Analytics: what the visitor sent, plus what happened this turn (recorded after the response ends).
+  const visitorHistory = messages.map((m) => ({ role: m.role, content: m.content as string }));
+  const signals = newTurnSignals();
+  const meta = (body ?? {}) as { sessionId?: unknown; visitorId?: unknown; pageUrl?: unknown };
+  if (typeof meta.sessionId === "string") {
+    after(() =>
+      recordTurn({
+        sessionId: meta.sessionId as string,
+        visitorId: typeof meta.visitorId === "string" ? meta.visitorId : undefined,
+        pageUrl: typeof meta.pageUrl === "string" ? meta.pageUrl : undefined,
+        headers: req.headers,
+        messages: visitorHistory,
+        signals,
+      }),
+    );
+  }
 
   const system = buildSystemPrompt();
   const tools = buildTools();
@@ -69,7 +89,10 @@ export async function POST(req: Request) {
             },
             { signal: req.signal },
           );
-          msgStream.on("text", (delta) => send({ type: "text", text: delta }));
+          msgStream.on("text", (delta) => {
+            signals.assistantText += delta;
+            send({ type: "text", text: delta });
+          });
           msgStream.on("streamEvent", (event) => {
             if (event.type === "content_block_start" && event.content_block.type === "server_tool_use") {
               send({ type: "status", text: "Checking permaloc.com…" });
@@ -97,6 +120,7 @@ export async function POST(req: Request) {
           for (const t of toolUses) {
             send({ type: "status", text: statusFor(t.name) });
             const r = await runTool(t.name, t.input);
+            noteToolCall(signals, t.name, t.input, r.content, r.isError);
             if (t.name === "submit_lead" && !r.isError) send({ type: "lead_submitted" });
             if (r.diagram) send({ type: "diagram", spec: r.diagram });
             if (t.name === "recommend_product" && !r.isError) {
@@ -108,6 +132,7 @@ export async function POST(req: Request) {
             results.push({ type: "tool_result", tool_use_id: t.id, content: r.content, is_error: r.isError || undefined });
           }
           messages.push({ role: "user", content: results });
+          if (signals.assistantText) signals.assistantText += "\n\n";
           send({ type: "text", text: "" });
         }
         send({ type: "done" });
